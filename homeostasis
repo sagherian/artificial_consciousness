@@ -1,0 +1,29 @@
+import numpy as np
+from pymoo.model.problem import Problem
+from pymoo.factory import get_sampling, get_crossover, get_mutation
+from pymoo.algorithms.nsga2 import NSGA2
+from pymoo.optimize import minimize
+
+class HomeostasisOptimization(Problem):
+    def __init__(self):
+        super().__init__(n_var=3, n_obj=3, n_constr=0, xl=np.array([0, 0, 0]), xu=np.array([1, 1, 1]))
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        hunger, thirst, social_status = x
+        out["F"] = np.array([hunger, thirst, social_status])
+
+algorithm = NSGA2(
+    pop_size=100,
+    sampling=get_sampling("real_random"),
+    crossover=get_crossover("real_sbx", prob=0.9, eta=15),
+    mutation=get_mutation("real_pm", eta=20),
+    eliminate_duplicates=True
+)
+
+res = minimize(HomeostasisOptimization(),
+               algorithm,
+               ('n_gen', 100),
+               seed=1,
+               verbose=False)
+
+print("Best solutions found: \n", res.X)
