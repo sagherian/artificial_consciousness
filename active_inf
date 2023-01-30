@@ -1,0 +1,45 @@
+import numpy as np
+import tensorflow as tf
+from active_inference import FreeEnergy
+
+# Define the sensory inputs and hidden states of the agent
+class SensoryInput:
+    def __init__(self):
+        self.position = tf.Variable(0.0, dtype=tf.float32)
+
+class HiddenState:
+    def __init__(self):
+        self.velocity = tf.Variable(0.0, dtype=tf.float32)
+
+# Define the generative model of the agent
+class GenerativeModel:
+    def __init__(self, hidden_state, sensory_input):
+        self.hidden_state = hidden_state
+        self.sensory_input = sensory_input
+
+    def call(self, action):
+        # Update the hidden state based on the action
+        self.hidden_state.velocity.assign_add(action)
+        # Update the sensory input based on the hidden state
+        self.sensory_input.position.assign_add(self.hidden_state.velocity)
+        # Return the sensory input as an observation
+        return self.sensory_input.position
+
+# Initialize the sensory inputs, hidden states, and generative model
+sensory_input = SensoryInput()
+hidden_state = HiddenState()
+generative_model = GenerativeModel(hidden_state, sensory_input)
+
+# Create the free energy minimization objective
+free_energy = FreeEnergy(generative_model)
+
+# Choose the action by minimizing the free energy
+optimizer = tf.optimizers.Adam(learning_rate=0.1)
+for i in range(100):
+    with tf.GradientTape() as tape:
+        negative_free_energy = -free_energy(np.array([0.0]))
+    gradients = tape.gradient(negative_free_energy, generative_model.hidden_state.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, generative_model.hidden_state.trainable_variables))
+
+# The final position of the sensory input represents the agent's beliefs about its world
+print(sensory_input.position.numpy())
